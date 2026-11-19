@@ -1,0 +1,171 @@
+name: Mobile builds
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mobile-build.yml'
+      - 'android/**'
+      - 'ios/**'
+      - 'src/**'
+      - 'public/**'
+      - 'assets/**'
+      - 'capacitor.config.json'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.*'
+  push:
+    branches:
+      - main
+      - 'arena/**'
+    paths:
+      - '.github/workflows/mobile-build.yml'
+      - 'android/**'
+      - 'ios/**'
+      - 'src/**'
+      - 'public/**'
+      - 'assets/**'
+      - 'capacitor.config.json'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-checks:
+    name: Web build and lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build web app
+        run: npm run build
+
+  android:
+    name: Android App Bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - name: Install dependencies
+        run: npm ci
+      - name: Build web assets and sync Capacitor Android project
+        run: npm run mobile:android
+        env:
+          VITE_REVENUECAT_IOS_API_KEY: ${{ secrets.REVENUECAT_IOS_API_KEY }}
+          VITE_REVENUECAT_ANDROID_API_KEY: ${{ secrets.REVENUECAT_ANDROID_API_KEY }}
+          VITE_REVENUECAT_ENTITLEMENT_ID: ${{ vars.REVENUECAT_ENTITLEMENT_ID }}
+          VITE_REVENUECAT_WEEKLY_PACKAGE_ID: ${{ vars.REVENUECAT_WEEKLY_PACKAGE_ID }}
+          VITE_REVENUECAT_MONTHLY_PACKAGE_ID: ${{ vars.REVENUECAT_MONTHLY_PACKAGE_ID }}
+          VITE_REVENUECAT_LIFETIME_PACKAGE_ID: ${{ vars.REVENUECAT_LIFETIME_PACKAGE_ID }}
+          VITE_REVENUECAT_WEEKLY_PRODUCT_ID: ${{ vars.REVENUECAT_WEEKLY_PRODUCT_ID }}
+          VITE_REVENUECAT_MONTHLY_PRODUCT_ID: ${{ vars.REVENUECAT_MONTHLY_PRODUCT_ID }}
+          VITE_REVENUECAT_LIFETIME_PRODUCT_ID: ${{ vars.REVENUECAT_LIFETIME_PRODUCT_ID }}
+      - name: Prepare optional Android release signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -n "$ANDROID_KEYSTORE_BASE64$ANDROID_KEYSTORE_PASSWORD$ANDROID_KEY_ALIAS$ANDROID_KEY_PASSWORD" ]; then
+            if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
+              echo "Android signing secrets are incomplete; configure all four Android signing secrets or none." >&2
+              exit 1
+            fi
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/sie-prep-release.jks"
+            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/sie-prep-release.jks" >> "$GITHUB_ENV"
+            echo "Configured signed Android release bundle."
+          else
+            echo "No Android signing secrets configured; building an unsigned bundle for CI/testing."
+          fi
+      - name: Build Android App Bundle
+        run: |
+          chmod +x android/gradlew
+          ./android/gradlew --no-daemon -p android bundleRelease
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - name: Upload Android App Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: sie-prep-android-aab-${{ github.sha }}
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
+
+  ios:
+    name: iOS device archive
+    runs-on: macos-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build web assets and sync Capacitor iOS project
+        run: npm run mobile:ios
+        env:
+          VITE_REVENUECAT_IOS_API_KEY: ${{ secrets.REVENUECAT_IOS_API_KEY }}
+          VITE_REVENUECAT_ANDROID_API_KEY: ${{ secrets.REVENUECAT_ANDROID_API_KEY }}
+          VITE_REVENUECAT_ENTITLEMENT_ID: ${{ vars.REVENUECAT_ENTITLEMENT_ID }}
+          VITE_REVENUECAT_WEEKLY_PACKAGE_ID: ${{ vars.REVENUECAT_WEEKLY_PACKAGE_ID }}
+          VITE_REVENUECAT_MONTHLY_PACKAGE_ID: ${{ vars.REVENUECAT_MONTHLY_PACKAGE_ID }}
+          VITE_REVENUECAT_LIFETIME_PACKAGE_ID: ${{ vars.REVENUECAT_LIFETIME_PACKAGE_ID }}
+          VITE_REVENUECAT_WEEKLY_PRODUCT_ID: ${{ vars.REVENUECAT_WEEKLY_PRODUCT_ID }}
+          VITE_REVENUECAT_MONTHLY_PRODUCT_ID: ${{ vars.REVENUECAT_MONTHLY_PRODUCT_ID }}
+          VITE_REVENUECAT_LIFETIME_PRODUCT_ID: ${{ vars.REVENUECAT_LIFETIME_PRODUCT_ID }}
+      - name: Resolve Xcode packages
+        run: xcodebuild -resolvePackageDependencies -project ios/App/App.xcodeproj -scheme App
+      - name: Build unsigned iOS archive
+        run: |
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/SIEPrep.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            archive
+      - name: Upload unsigned iOS archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: sie-prep-ios-unsigned-xcarchive-${{ github.sha }}
+          path: ${{ runner.temp }}/SIEPrep.xcarchive
+          if-no-files-found: error
+          retention-days: 14

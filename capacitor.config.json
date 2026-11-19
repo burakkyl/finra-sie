@@ -1,0 +1,33 @@
+{
+  "appId": "com.burakkyl.sieprep",
+  "appName": "SIE Prep",
+  "webDir": "dist",
+  "backgroundColor": "#F5F7FA",
+  "ios": {
+    "contentInset": "automatic",
+    "scrollEnabled": true
+  },
+  "android": {
+    "backgroundColor": "#F5F7FA",
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "launchAutoHide": true,
+      "backgroundColor": "#F5F7FA",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#F5F7FA",
+      "overlaysWebView": false
+    },
+    "Keyboard": {
+      "resize": "native",
+      "style": "LIGHT",
+      "resizeOnFullScreen": true
+    }
+  }
+}

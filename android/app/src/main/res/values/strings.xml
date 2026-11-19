@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SIE Prep</string>
+    <string name="title_activity_main">SIE Prep</string>
+    <string name="package_name">com.burakkyl.sieprep</string>
+    <string name="custom_url_scheme">com.burakkyl.sieprep</string>
+</resources>

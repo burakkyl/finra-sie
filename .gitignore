@@ -11,6 +11,13 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
+
+# Signing material must never be committed
+*.jks
+*.keystore
 
 # Editor directories and files
 .vscode/*

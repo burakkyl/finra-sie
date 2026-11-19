@@ -17,7 +17,7 @@ function calculateStreak(results, today) {
   return streak
 }
 
-export default function Dashboard({ language = 'en', questions, results = [], hasPremium = false, plan, onMock, onPractice, onUpgrade, onQuestions, onFlashcards, onReference }) {
+export default function Dashboard({ language = 'en', questions, results = [], hasPremium = false, plan, isNative = false, storeProvider = 'App Store', onMock, onPractice, onUpgrade, onQuestions, onFlashcards, onReference }) {
   const tr = language === 'tr'
   const [today] = useState(() => new Date())
   const todayLabel = new Intl.DateTimeFormat(tr ? 'tr-TR' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(today)
@@ -46,7 +46,7 @@ export default function Dashboard({ language = 'en', questions, results = [], ha
             <button className="button button-light" onClick={onMock} type="button"><Play size={16} fill="currentColor" />{tr ? 'Tam denemeyi başlat' : 'Start full mock exam'}<LockKeyhole size={14} className="button-lock" /></button>
             <button className="button button-ghost-light" onClick={onPractice} type="button">{tr ? '5 soruluk ücretsiz tekrar' : 'Try a 5-question sample'}<ArrowRight size={15} /></button>
           </div>
-          <div className="hero-footnote"><ShieldCheckMini />{tr ? 'Hesap yok. İlerlemen bu tarayıcıda saklanır.' : 'No account. Your progress stays in this browser.'}</div>
+          <div className="hero-footnote"><ShieldCheckMini />{isNative ? (tr ? 'Hesap yok. İlerlemen bu cihazda saklanır.' : 'No account. Your progress stays on this device.') : (tr ? 'Hesap yok. İlerlemen bu tarayıcıda saklanır.' : 'No account. Your progress stays in this browser.')}</div>
         </div>
         <div className="hero-orbit hero-orbit-one" />
         <div className="hero-orbit hero-orbit-two" />
@@ -157,11 +157,11 @@ export default function Dashboard({ language = 'en', questions, results = [], ha
           <div className="membership-topline"><span className="membership-badge"><Sparkles size={13} />{hasPremium ? (tr ? 'ERİŞİM AÇIK' : 'ACCESS ACTIVE') : (tr ? 'SIE PLUS' : 'SIE PLUS')}</span><span className="membership-no-login">{tr ? 'Giriş gerekmez' : 'No login required'}</span></div>
           <div className="membership-copy"><h3>{hasPremium ? (tr ? 'Tam çalışma alanın hazır.' : 'Your full study suite is ready.') : (tr ? 'Daha fazlasını, giriş yapmadan çalış.' : 'Go further, without an account.')}</h3><p>{hasPremium ? (plan ? (tr ? `${plan.nameTr} planın bu cihazda etkin.` : `${plan.name} plan active on this device.`) : '') : (tr ? 'Tam denemeler, tüm sorular ve kapsamlı çalışma araçlarının kilidini aç.' : 'Unlock full mock exams, every question, and the complete study toolkit.')}</p></div>
           <button className={`button ${hasPremium ? 'button-outline-light' : 'button-light'} membership-button`} onClick={hasPremium ? onUpgrade : onUpgrade} type="button">{hasPremium ? (tr ? 'Planı yönet' : 'Manage plan') : (tr ? 'Planları gör' : 'View plans')}<ArrowRight size={15} /></button>
-          {!hasPremium && <div className="membership-price-hint">{tr ? 'Haftalık $7 · Aylık $19 · Ömür boyu $100' : '$7 weekly · $19 monthly · $100 lifetime'}</div>}
+          {!hasPremium && <div className="membership-price-hint">{isNative ? (tr ? `Fiyatlar ${storeProvider} tarafından gösterilir.` : `Prices shown by ${storeProvider}.`) : (tr ? 'Haftalık $7 · Aylık $19 · Ömür boyu $100 · web demo' : '$7 weekly · $19 monthly · $100 lifetime · web demo')}</div>}
         </article>
       </section>
 
-      <div className="dashboard-bottom-note"><span><LockKeyhole size={13} />{tr ? 'Oturum açmadan çalışıyorsun' : 'You’re studying without an account'}</span><span>{tr ? 'İlerleme yerel tarayıcı depolamasında tutulur.' : 'Progress is stored in local browser storage.'}</span></div>
+      <div className="dashboard-bottom-note"><span><LockKeyhole size={13} />{tr ? 'Oturum açmadan çalışıyorsun' : 'You’re studying without an account'}</span><span>{isNative ? (tr ? 'İlerleme bu cihazda yerel olarak saklanır.' : 'Progress is stored locally on this device.') : (tr ? 'İlerleme yerel tarayıcı depolamasında tutulur.' : 'Progress is stored in local browser storage.')}</span></div>
     </div>
   )
 }

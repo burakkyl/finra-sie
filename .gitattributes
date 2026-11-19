@@ -1,0 +1,2 @@
+# Preserve native Windows launchers while storing normalized text in Git.
+*.bat text eol=crlf

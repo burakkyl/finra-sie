@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { ArrowRight, BookOpenCheck, Check, Clock3, LockKeyhole, SlidersHorizontal, Sparkles } from 'lucide-react'
 import { SECTIONS } from '../data/questions'
 
-export default function PracticeSetup({ language = 'en', questions, hasPremium = false, onUpgrade, onStart, initialSettings = null }) {
+export default function PracticeSetup({ language = 'en', questions, hasPremium = false, isNative = false, onUpgrade, onStart, initialSettings = null }) {
   const tr = language === 'tr'
   const [section, setSection] = useState(initialSettings?.section ? String(initialSettings.section) : 'all')
   const [difficulty, setDifficulty] = useState(initialSettings?.difficulty || 'all')
@@ -23,7 +23,7 @@ export default function PracticeSetup({ language = 'en', questions, hasPremium =
 
   return (
     <div className="practice-setup-page page-enter">
-      <div className="page-title-block"><div><p className="eyebrow">{tr ? 'ODAKLI ÇALIŞMA' : 'FOCUSED PRACTICE'}</p><h1>{tr ? 'Bir çalışma seti oluştur.' : 'Build a practice set.'}</h1><p>{tr ? 'Bölümünü, zorluk seviyeni ve soru sayını seç. Çalışma ilerlemen bu tarayıcıda kalır.' : 'Choose a section, difficulty, and question count. Your study progress stays in this browser.'}</p></div><span className="no-account-chip"><Check size={14} />{tr ? 'Hesap gerekmez' : 'No account needed'}</span></div>
+      <div className="page-title-block"><div><p className="eyebrow">{tr ? 'ODAKLI ÇALIŞMA' : 'FOCUSED PRACTICE'}</p><h1>{tr ? 'Bir çalışma seti oluştur.' : 'Build a practice set.'}</h1><p>{isNative ? (tr ? 'Bölümünü, zorluk seviyeni ve soru sayını seç. Çalışma ilerlemen bu cihazda kalır.' : 'Choose a section, difficulty, and question count. Your study progress stays on this device.') : (tr ? 'Bölümünü, zorluk seviyeni ve soru sayını seç. Çalışma ilerlemen bu tarayıcıda kalır.' : 'Choose a section, difficulty, and question count. Your study progress stays in this browser.')}</p></div><span className="no-account-chip"><Check size={14} />{tr ? 'Hesap gerekmez' : 'No account needed'}</span></div>
 
       <div className="practice-layout">
         <section className="panel practice-config-panel">

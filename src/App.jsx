@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CheckCircle2, ChevronRight, CircleHelp, GraduationCap, Layers3, LayoutDashboard, Library, LockKeyhole, Menu, NotebookPen, Search, Sparkles, Timer, X } from 'lucide-react'
+import { CheckCircle2, ChevronRight, CircleHelp, CreditCard, GraduationCap, Layers3, LayoutDashboard, Library, LockKeyhole, Menu, NotebookPen, Search, Sparkles, Timer, X } from 'lucide-react'
 import { QUESTIONS } from './data/questions'
 import { ADDITIONAL_QUESTIONS } from './data/additionalQuestions'
 import { SubscriptionProvider, useSubscription } from './context/SubscriptionContext'
@@ -45,7 +45,22 @@ const NAV_ITEMS = [
 ]
 
 function AppContent() {
-  const { hasPremium, membership, plan, activatePlan, clearMembership } = useSubscription()
+  const {
+    hasPremium,
+    membership,
+    plan,
+    activatePlan,
+    clearMembership,
+    isNative,
+    storePackages,
+    billingStatus,
+    billingError,
+    storeProvider,
+    purchasePlan,
+    restorePurchases,
+    refreshBilling,
+    openManageSubscriptions,
+  } = useSubscription()
   const [language, setLanguage] = useState(readLanguage)
   const [activeView, setActiveView] = useState('home')
   const [activeSession, setActiveSession] = useState(null)
@@ -169,6 +184,18 @@ function AppContent() {
     setActiveView('home')
   }, [])
 
+  const handlePlanSelect = useCallback(async (planId) => {
+    if (!isNative) {
+      activatePlan(planId)
+      setToast(tr ? 'Demo planı etkinleştirildi. Gerçek ödeme alınmadı.' : 'Demo plan activated. No payment was processed.')
+      return { success: true }
+    }
+    const result = await purchasePlan(planId)
+    if (result.success) setToast(tr ? 'Satın alma tamamlandı; aboneliğin etkin.' : 'Purchase complete. Your plan is active.')
+    else if (!result.cancelled) setToast(tr ? 'Satın alma tamamlanamadı. Mağaza bağlantını kontrol et.' : (result.error || 'The store could not complete your purchase.'))
+    return result
+  }, [activatePlan, isNative, purchasePlan, tr])
+
   const navigate = (view) => {
     setMobileNavOpen(false)
     if (view === 'mock') {
@@ -212,12 +239,12 @@ function AppContent() {
   }
 
   const renderPage = () => {
-    if (activeView === 'practice') return <PracticeSetup key={`${practiceDefaults?.section || 'all'}-${practiceDefaults?.difficulty || 'all'}`} language={language} questions={QUESTION_BANK} hasPremium={hasPremium} onUpgrade={() => openPaywall()} onStart={startPracticeSet} initialSettings={practiceDefaults} />
+    if (activeView === 'practice') return <PracticeSetup key={`${practiceDefaults?.section || 'all'}-${practiceDefaults?.difficulty || 'all'}`} language={language} questions={QUESTION_BANK} hasPremium={hasPremium} isNative={isNative} onUpgrade={() => openPaywall()} onStart={startPracticeSet} initialSettings={practiceDefaults} />
     if (activeView === 'questions') return <QuestionBank key={`${selectedBankSection ?? 'all'}-${bankSearch}`} language={language} questions={QUESTION_BANK} hasPremium={hasPremium} initialSection={selectedBankSection} initialSearch={bankSearch} onUpgrade={() => openPaywall()} onStartPractice={handleQuestionBankPractice} />
     if (activeView === 'flashcards') return <FlashcardsPage language={language} hasPremium={hasPremium} onUpgrade={() => openPaywall()} />
     if (activeView === 'reference') return <ReferencePage language={language} hasPremium={hasPremium} onUpgrade={() => openPaywall()} />
-    if (activeView === 'pricing') return <PricingPage language={language} plan={plan} membership={membership} onSelectPlan={(id) => { activatePlan(id); setToast(tr ? 'Demo planı bu cihazda etkinleştirildi. Ödeme alınmadı.' : 'Demo plan activated on this device. No payment was processed.') }} onClearPlan={() => { clearMembership(); setToast(tr ? 'Yerel üyelik durumu sıfırlandı.' : 'Local membership state was reset.') }} />
-    return <Dashboard language={language} questions={QUESTION_BANK} results={results} hasPremium={hasPremium} plan={plan} onMock={startFullMock} onPractice={beginPractice} onUpgrade={() => openPaywall()} onQuestions={onSectionQuestions} onFlashcards={() => setActiveView('flashcards')} onReference={() => setActiveView('reference')} />
+    if (activeView === 'pricing') return <PricingPage language={language} plan={plan} membership={membership} isNative={isNative} storePackages={storePackages} billingStatus={billingStatus} billingError={billingError} storeProvider={storeProvider} onSelectPlan={handlePlanSelect} onRestore={restorePurchases} onManage={openManageSubscriptions} onRefresh={refreshBilling} onClearPlan={() => { clearMembership(); setToast(tr ? 'Demo planı sıfırlandı.' : 'Demo plan was reset.') }} />
+    return <Dashboard language={language} questions={QUESTION_BANK} results={results} hasPremium={hasPremium} plan={plan} isNative={isNative} storeProvider={storeProvider} onMock={startFullMock} onPractice={beginPractice} onUpgrade={() => openPaywall()} onQuestions={onSectionQuestions} onFlashcards={() => setActiveView('flashcards')} onReference={() => setActiveView('reference')} />
   }
 
   return (
@@ -241,7 +268,7 @@ function AppContent() {
           <button type="button" onClick={() => navigate('pricing')}>{hasPremium ? (tr ? 'Planı yönet' : 'Manage plan') : (tr ? 'Planları keşfet' : 'Explore plans')}<ChevronRight size={14} /></button>
         </div>
 
-        <div className="sidebar-bottom"><div className="sidebar-local-note"><span><LockKeyhole size={13} /></span><p>{tr ? 'Hesap girişi yok' : 'No account login'}<small>{tr ? 'İlerleme bu tarayıcıda saklanır' : 'Progress saved in this browser'}</small></p></div><span className="sidebar-version">SIE PREP · STUDY STUDIO</span></div>
+        <div className="sidebar-bottom"><div className="sidebar-local-note"><span><LockKeyhole size={13} /></span><p>{tr ? 'Hesap girişi yok' : 'No account login'}<small>{isNative ? (tr ? 'İlerleme bu cihazda saklanır' : 'Progress saved on this device') : (tr ? 'İlerleme bu tarayıcıda saklanır' : 'Progress saved in this browser')}</small></p></div><span className="sidebar-version">SIE PREP · STUDY STUDIO</span></div>
       </aside>
 
       <div className="app-main">
@@ -254,9 +281,10 @@ function AppContent() {
           </div>
         </header>
         <main className="page-container" key={activeView}>{renderPage()}</main>
-        <footer className="app-footer"><span>© 2026 SIE Prep Study Studio</span><span>{tr ? 'Özgün çalışma içeriği · FINRA ile bağlantılı değildir' : 'Original study content · not affiliated with FINRA'}</span><a href="https://www.finra.org/registration-exams-ce/qualification-exams/securities-industry-essentials-exam" target="_blank" rel="noreferrer">{tr ? 'FINRA sınav bilgisi' : 'FINRA exam info'}<ChevronRight size={12} /></a></footer>
+        <footer className="app-footer"><span>© 2026 SIE Prep Study Studio</span><span>{tr ? 'Özgün çalışma içeriği · FINRA ile bağlantılı değildir' : 'Original study content · not affiliated with FINRA'}</span><div className="app-footer-links"><a href="/terms.html">{tr ? 'Koşullar' : 'Terms'}</a><a href="/privacy.html">{tr ? 'Gizlilik' : 'Privacy'}</a><a href="/support.html">{tr ? 'Destek' : 'Support'}</a><a href="https://www.finra.org/registration-exams-ce/qualification-exams/securities-industry-essentials-exam" target="_blank" rel="noreferrer">{tr ? 'FINRA sınav bilgisi' : 'FINRA exam info'}<ChevronRight size={12} /></a></div></footer>
       </div>
 
+      <MobileTabBar activeView={activeView} language={language} onNavigate={navigate} />
       {paywallOpen && <PaywallModal language={language} onClose={closePaywall} onActivated={continueAfterActivation} />}
       {toast && <div className="toast-message"><CheckCircle2 size={17} />{toast}</div>}
     </div>
@@ -267,6 +295,25 @@ function NavigationButton({ item, active, language, onClick }) {
   const Icon = item.icon
   const tr = language === 'tr'
   return <button type="button" className={`nav-item ${active ? 'active' : ''}`} onClick={onClick}><Icon size={17} strokeWidth={active ? 2.2 : 1.8} /><span>{tr ? item.tr : item.en}</span>{item.premium && <span className="nav-pro-label"><LockKeyhole size={10} />PRO</span>}{active && <i className="nav-active-indicator" />}</button>
+}
+
+function MobileTabBar({ activeView, language, onNavigate }) {
+  const tr = language === 'tr'
+  const items = [
+    { id: 'home', label: tr ? 'Ana sayfa' : 'Home', icon: LayoutDashboard },
+    { id: 'practice', label: tr ? 'Pratik' : 'Practice', icon: CircleHelp },
+    { id: 'mock', label: tr ? 'Deneme' : 'Mock', icon: Timer },
+    { id: 'questions', label: tr ? 'Sorular' : 'Questions', icon: Library },
+    { id: 'pricing', label: tr ? 'Planlar' : 'Plans', icon: CreditCard },
+  ]
+  return (
+    <nav className="mobile-tab-bar" aria-label={tr ? 'Alt gezinme' : 'Bottom navigation'}>
+      {items.map(({ id, label, icon: Icon }) => {
+        const active = activeView === id || (id === 'mock' && activeView === 'exam')
+        return <button key={id} type="button" className={`mobile-tab ${active ? 'active' : ''} ${id === 'pricing' ? 'mobile-tab-pricing' : ''}`} onClick={() => onNavigate(id)} aria-current={active ? 'page' : undefined}><Icon size={19} strokeWidth={active ? 2.3 : 1.8} /><span>{label}</span>{id === 'pricing' && <i className="mobile-tab-sparkle"><Sparkles size={9} /></i>}</button>
+      })}
+    </nav>
+  )
 }
 
 export default function App() {

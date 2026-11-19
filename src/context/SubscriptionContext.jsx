@@ -4,7 +4,6 @@ import { Browser } from '@capacitor/browser'
 import { Capacitor } from '@capacitor/core'
 import { PLANS } from '../data/plans'
 
-const STORAGE_KEY = 'sie-prep-membership-v1'
 const DEFAULT_ENTITLEMENT_ID = import.meta.env.VITE_REVENUECAT_ENTITLEMENT_ID || 'sie_plus'
 const IS_NATIVE = Capacitor.isNativePlatform()
 const NATIVE_PLATFORM = Capacitor.getPlatform()
@@ -57,21 +56,6 @@ async function ensureRevenueCatConfigured(apiKey) {
   return Purchases
 }
 
-function getStoredMembership() {
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (!stored) return null
-    const membership = JSON.parse(stored)
-    if (membership.planId !== 'lifetime' && membership.expiresAt && Date.now() >= membership.expiresAt) {
-      window.localStorage.removeItem(STORAGE_KEY)
-      return null
-    }
-    return membership
-  } catch {
-    return null
-  }
-}
-
 function resolveStorePackages(offering) {
   const availablePackages = offering?.availablePackages || []
   const packageTypes = { weekly: 'WEEKLY', monthly: 'MONTHLY', lifetime: 'LIFETIME' }
@@ -101,7 +85,6 @@ function safeErrorMessage(error) {
 }
 
 export function SubscriptionProvider({ children }) {
-  const [localMembership, setLocalMembership] = useState(getStoredMembership)
   const [nativeStore, setNativeStore] = useState({
     status: !IS_NATIVE ? 'web-preview' : REVENUECAT_API_KEY ? 'loading' : 'not-configured',
     packages: {},
@@ -112,12 +95,8 @@ export function SubscriptionProvider({ children }) {
 
   useEffect(() => {
     if (IS_NATIVE) return
-    if (!localMembership) {
-      window.localStorage.removeItem(STORAGE_KEY)
-      return
-    }
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(localMembership))
-  }, [localMembership])
+    try { window.localStorage.removeItem('sie-prep-membership-v1') } catch { /* Ignore unavailable browser storage. */ }
+  }, [])
 
   const syncCustomerInfo = useCallback((customerInfo) => {
     setNativeStore((current) => ({
@@ -208,24 +187,6 @@ export function SubscriptionProvider({ children }) {
     }
   }, [refreshBilling, syncCustomerInfo])
 
-  useEffect(() => {
-    if (IS_NATIVE || !localMembership || localMembership.planId === 'lifetime' || !localMembership.expiresAt) return undefined
-    const remaining = Math.max(0, localMembership.expiresAt - Date.now())
-    const timeout = window.setTimeout(() => setLocalMembership(null), remaining)
-    return () => window.clearTimeout(timeout)
-  }, [localMembership])
-
-  const activatePlan = useCallback((planId) => {
-    if (IS_NATIVE) return
-    const selectedPlan = PLANS.find((item) => item.id === planId)
-    if (!selectedPlan) return
-    const startedAt = Date.now()
-    const expiresAt = selectedPlan.durationDays
-      ? startedAt + selectedPlan.durationDays * 24 * 60 * 60 * 1000
-      : null
-    setLocalMembership({ planId: selectedPlan.id, startedAt, expiresAt, mode: 'local-demo' })
-  }, [])
-
   const purchasePlan = useCallback(async (planId) => {
     if (!IS_NATIVE) return { success: false, reason: 'web-preview' }
     if (!REVENUECAT_API_KEY) return { success: false, reason: 'not-configured' }
@@ -274,10 +235,6 @@ export function SubscriptionProvider({ children }) {
     }
   }, [nativeStore.customerInfo, syncCustomerInfo])
 
-  const clearMembership = useCallback(() => {
-    if (!IS_NATIVE) setLocalMembership(null)
-  }, [])
-
   const activeEntitlement = nativeStore.customerInfo?.entitlements?.active?.[DEFAULT_ENTITLEMENT_ID]
   const storePlanId = activeEntitlement
     ? Object.entries(nativeStore.packages).find(([, storePackage]) => {
@@ -285,23 +242,20 @@ export function SubscriptionProvider({ children }) {
       return productId === activeEntitlement.productIdentifier || productId?.startsWith(`${activeEntitlement.productIdentifier}:`)
     })?.[0] || Object.entries(PURCHASE_PRODUCT_IDS).find(([, productId]) => productId === activeEntitlement.productIdentifier)?.[0]
     : null
-  const effectivePlanId = IS_NATIVE ? (nativeStore.entitlementActive ? storePlanId : null) : localMembership?.planId
+  const effectivePlanId = IS_NATIVE && nativeStore.entitlementActive ? storePlanId : null
   const entitlementExpirationDate = activeEntitlement?.expirationDate
   const effectiveMembership = useMemo(() => {
-    if (!IS_NATIVE) return localMembership
-    if (!nativeStore.entitlementActive) return null
+    if (!IS_NATIVE || !nativeStore.entitlementActive) return null
     return {
       planId: effectivePlanId,
       expiresAt: entitlementExpirationDate ? new Date(entitlementExpirationDate).getTime() : null,
       mode: 'app-store',
     }
-  }, [effectivePlanId, entitlementExpirationDate, localMembership, nativeStore.entitlementActive])
+  }, [effectivePlanId, entitlementExpirationDate, nativeStore.entitlementActive])
 
   const value = useMemo(() => ({
     membership: effectiveMembership,
-    hasPremium: IS_NATIVE ? nativeStore.entitlementActive : Boolean(localMembership),
-    activatePlan,
-    clearMembership,
+    hasPremium: IS_NATIVE && nativeStore.entitlementActive,
     plan: PLANS.find((item) => item.id === effectivePlanId) || null,
     isNative: IS_NATIVE,
     storeProvider: NATIVE_PLATFORM === 'ios' ? 'App Store' : 'Google Play',
@@ -313,11 +267,8 @@ export function SubscriptionProvider({ children }) {
     restorePurchases,
     openManageSubscriptions,
   }), [
-    activatePlan,
-    clearMembership,
     effectiveMembership,
     effectivePlanId,
-    localMembership,
     nativeStore.entitlementActive,
     nativeStore.error,
     nativeStore.packages,

@@ -16,7 +16,16 @@ import './App.css'
 const QUESTION_BANK = [...QUESTIONS, ...ADDITIONAL_QUESTIONS]
 const RESULTS_KEY = 'sie-prep-results-v1'
 const LANGUAGE_KEY = 'sie-prep-language-v1'
+const FREE_PRACTICE_KEY = 'sie-prep-free-practice-used-v1'
 const MOCK_QUOTAS = { 1: 14, 2: 37, 3: 26, 4: 8 }
+
+const readFreePracticeUsed = () => {
+  try { return Boolean(window.localStorage.getItem(FREE_PRACTICE_KEY)) } catch { return false }
+}
+
+const markFreePracticeUsed = () => {
+  try { window.localStorage.setItem(FREE_PRACTICE_KEY, new Date().toISOString()) } catch { /* Keep the in-memory limit if storage is unavailable. */ }
+}
 
 const readResults = () => {
   try { return JSON.parse(window.localStorage.getItem(RESULTS_KEY) || '[]') } catch { return [] }
@@ -49,8 +58,6 @@ function AppContent() {
     hasPremium,
     membership,
     plan,
-    activatePlan,
-    clearMembership,
     isNative,
     storePackages,
     billingStatus,
@@ -65,6 +72,7 @@ function AppContent() {
   const [activeView, setActiveView] = useState('home')
   const [activeSession, setActiveSession] = useState(null)
   const [results, setResults] = useState(readResults)
+  const [freePracticeUsed, setFreePracticeUsed] = useState(readFreePracticeUsed)
   const [paywallOpen, setPaywallOpen] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [selectedBankSection, setSelectedBankSection] = useState(null)
@@ -79,6 +87,14 @@ function AppContent() {
   useEffect(() => {
     window.localStorage.setItem(LANGUAGE_KEY, language)
   }, [language])
+
+  useEffect(() => {
+    const syncFreePracticeUsage = (event) => {
+      if (event.key === FREE_PRACTICE_KEY || event.key === null) setFreePracticeUsed(readFreePracticeUsed())
+    }
+    window.addEventListener('storage', syncFreePracticeUsage)
+    return () => window.removeEventListener('storage', syncFreePracticeUsage)
+  }, [])
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -148,8 +164,21 @@ function AppContent() {
       openPaywall()
       return
     }
+    if (!hasPremium) {
+      if (freePracticeUsed || readFreePracticeUsed()) {
+        setFreePracticeUsed(true)
+        openPaywall()
+        return
+      }
+      if (count !== 5 || available.length < 5) {
+        setToast(tr ? 'Ücretsiz örnek tam 5 soru içerir. Beş veya daha fazla eşleşen sorusu olan filtreleri seç.' : 'The free sample contains exactly 5 questions. Choose filters with at least five matching questions.')
+        return
+      }
+      markFreePracticeUsed()
+      setFreePracticeUsed(true)
+    }
     startExam(shuffle(available).slice(0, Math.min(count, available.length)), 'practice')
-  }, [hasPremium, openPaywall, startExam, tr])
+  }, [freePracticeUsed, hasPremium, openPaywall, startExam, tr])
 
   const beginPractice = useCallback(() => {
     setPracticeDefaults(null)
@@ -185,16 +214,12 @@ function AppContent() {
   }, [])
 
   const handlePlanSelect = useCallback(async (planId) => {
-    if (!isNative) {
-      activatePlan(planId)
-      setToast(tr ? 'Demo planı etkinleştirildi. Gerçek ödeme alınmadı.' : 'Demo plan activated. No payment was processed.')
-      return { success: true }
-    }
+    if (!isNative) return { success: false, reason: 'web-checkout-unavailable' }
     const result = await purchasePlan(planId)
     if (result.success) setToast(tr ? 'Satın alma tamamlandı; aboneliğin etkin.' : 'Purchase complete. Your plan is active.')
     else if (!result.cancelled) setToast(tr ? 'Satın alma tamamlanamadı. Mağaza bağlantını kontrol et.' : (result.error || 'The store could not complete your purchase.'))
     return result
-  }, [activatePlan, isNative, purchasePlan, tr])
+  }, [isNative, purchasePlan, tr])
 
   const navigate = (view) => {
     setMobileNavOpen(false)
@@ -235,16 +260,16 @@ function AppContent() {
               : navTitle ? (tr ? navTitle.tr : navTitle.en) : (tr ? 'Çalışma alanı' : 'Study workspace')
 
   if (activeView === 'exam' && activeSession) {
-    return <ExamRoom questions={activeSession.questions} mode={activeSession.mode} language={language} onExit={exitExam} onFinish={recordResult} />
+    return <ExamRoom questions={activeSession.questions} mode={activeSession.mode} language={language} hasPremium={hasPremium} hasUsedFreePractice={freePracticeUsed} onViewPlans={() => { setActiveSession(null); setActiveView('pricing') }} onExit={exitExam} onFinish={recordResult} />
   }
 
   const renderPage = () => {
-    if (activeView === 'practice') return <PracticeSetup key={`${practiceDefaults?.section || 'all'}-${practiceDefaults?.difficulty || 'all'}`} language={language} questions={QUESTION_BANK} hasPremium={hasPremium} isNative={isNative} onUpgrade={() => openPaywall()} onStart={startPracticeSet} initialSettings={practiceDefaults} />
+    if (activeView === 'practice') return <PracticeSetup key={`${practiceDefaults?.section || 'all'}-${practiceDefaults?.difficulty || 'all'}`} language={language} questions={QUESTION_BANK} hasPremium={hasPremium} hasUsedFreePractice={freePracticeUsed} isNative={isNative} onUpgrade={() => openPaywall()} onStart={startPracticeSet} initialSettings={practiceDefaults} />
     if (activeView === 'questions') return <QuestionBank key={`${selectedBankSection ?? 'all'}-${bankSearch}`} language={language} questions={QUESTION_BANK} hasPremium={hasPremium} initialSection={selectedBankSection} initialSearch={bankSearch} onUpgrade={() => openPaywall()} onStartPractice={handleQuestionBankPractice} />
     if (activeView === 'flashcards') return <FlashcardsPage language={language} hasPremium={hasPremium} onUpgrade={() => openPaywall()} />
     if (activeView === 'reference') return <ReferencePage language={language} hasPremium={hasPremium} onUpgrade={() => openPaywall()} />
-    if (activeView === 'pricing') return <PricingPage language={language} plan={plan} membership={membership} isNative={isNative} storePackages={storePackages} billingStatus={billingStatus} billingError={billingError} storeProvider={storeProvider} onSelectPlan={handlePlanSelect} onRestore={restorePurchases} onManage={openManageSubscriptions} onRefresh={refreshBilling} onClearPlan={() => { clearMembership(); setToast(tr ? 'Demo planı sıfırlandı.' : 'Demo plan was reset.') }} />
-    return <Dashboard language={language} questions={QUESTION_BANK} results={results} hasPremium={hasPremium} plan={plan} isNative={isNative} storeProvider={storeProvider} onMock={startFullMock} onPractice={beginPractice} onUpgrade={() => openPaywall()} onQuestions={onSectionQuestions} onFlashcards={() => setActiveView('flashcards')} onReference={() => setActiveView('reference')} />
+    if (activeView === 'pricing') return <PricingPage language={language} plan={plan} membership={membership} isNative={isNative} storePackages={storePackages} billingStatus={billingStatus} billingError={billingError} storeProvider={storeProvider} onSelectPlan={handlePlanSelect} onRestore={restorePurchases} onManage={openManageSubscriptions} onRefresh={refreshBilling} />
+    return <Dashboard language={language} questions={QUESTION_BANK} results={results} hasPremium={hasPremium} hasUsedFreePractice={freePracticeUsed} plan={plan} isNative={isNative} storeProvider={storeProvider} onMock={startFullMock} onPractice={beginPractice} onUpgrade={() => openPaywall()} onQuestions={onSectionQuestions} onFlashcards={() => setActiveView('flashcards')} onReference={() => setActiveView('reference')} />
   }
 
   return (

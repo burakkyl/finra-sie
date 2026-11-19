@@ -9,7 +9,6 @@ export default function PaywallModal({ language = 'en', onClose, onActivated }) 
     membership,
     plan,
     hasPremium,
-    activatePlan,
     isNative,
     storePackages,
     billingStatus,
@@ -29,21 +28,21 @@ export default function PaywallModal({ language = 'en', onClose, onActivated }) 
 
   const selectPlan = async (planId) => {
     setMessage('')
-    if (isNative) {
-      setBusyPlanId(planId)
-      const result = await purchasePlan(planId)
-      setBusyPlanId(null)
-      if (result.success) {
-        setChosenPlan(planId)
-        setActivated(true)
-      } else if (!result.cancelled) {
-        setMessage(tr ? 'Satın alma tamamlanamadı. Mağaza bağlantını kontrol edip tekrar dene.' : (result.error || 'The purchase could not be completed. Check your store connection and try again.'))
-      }
+    if (!isNative) {
+      setMessage(tr
+        ? 'Web üzerinden satın alma henüz kullanılamıyor. Planlar mobil uygulamada App Store veya Google Play ile satın alınabilir.'
+        : 'Web checkout is not available yet. Purchase plans in the mobile app through the App Store or Google Play.')
       return
     }
-    activatePlan(planId)
-    setChosenPlan(planId)
-    setActivated(true)
+    setBusyPlanId(planId)
+    const result = await purchasePlan(planId)
+    setBusyPlanId(null)
+    if (result.success) {
+      setChosenPlan(planId)
+      setActivated(true)
+    } else if (!result.cancelled) {
+      setMessage(tr ? 'Satın alma tamamlanamadı. Mağaza bağlantını kontrol edip tekrar dene.' : (result.error || 'The purchase could not be completed. Check your store connection and try again.'))
+    }
   }
 
   const restore = async () => {
@@ -82,7 +81,7 @@ export default function PaywallModal({ language = 'en', onClose, onActivated }) 
           <span className="success-orb"><CheckCircle2 size={34} /></span>
           <p className="eyebrow">{tr ? 'HAZIRSIN' : 'YOU’RE ALL SET'}</p>
           <h3>{tr ? `${successName} planın etkin` : `${successName} access is active`}</h3>
-          <p>{isNative ? (tr ? 'Erişimin mağaza hesabına bağlıdır. Satın alma durumunu istediğin zaman geri yükleyebilirsin.' : 'Your access is linked to your store account. You can restore purchases at any time.') : (tr ? 'Bu demo planı yalnızca bu tarayıcıda saklanır. Gerçek ödeme alınmadı.' : 'This demo plan is stored in this browser only. No payment has been processed.')}</p>
+          <p>{tr ? 'Erişimin mağaza hesabına bağlıdır. Satın alma durumunu istediğin zaman geri yükleyebilirsin.' : 'Your access is linked to your store account. You can restore purchases at any time.'}</p>
           {isNative && hasPremium && <button className="restore-inline-link" type="button" onClick={() => void manageSubscription()}>{tr ? 'Aboneliği mağazada yönet' : 'Manage subscription in store'}</button>}
           <button className="button button-primary" type="button" onClick={continueToApp}>{tr ? 'Çalışmaya devam et' : 'Continue studying'}</button>
         </div>
@@ -117,7 +116,7 @@ export default function PaywallModal({ language = 'en', onClose, onActivated }) 
               </div>
             </div>
           ) : (
-            <div className="demo-checkout-note"><ShieldCheck size={16} /><span>{tr ? 'Web önizlemesi: plan etkinleştirme demo amaçlıdır; ödeme alınmaz. Mobil uygulamada gerçek satın alımlar Apple App Store veya Google Play üzerinden yapılır.' : 'Web preview: plan activation is a demo and does not charge you. Real mobile purchases use Apple App Store or Google Play billing.'}</span></div>
+            <div className="web-checkout-note"><ShieldCheck size={16} /><span>{tr ? 'Web önizlemesinde ödeme alınmaz ve Plus erişimi etkinleştirilmez. Planları App Store veya Google Play üzerinden mobil uygulamada satın alabilirsin.' : 'The web preview does not accept payment or activate Plus. Purchase plans in the mobile app through the App Store or Google Play.'}</span></div>
           )}
           <div className="legal-links-row"><a href="/terms.html">{tr ? 'Kullanım Koşulları' : 'Terms of Use'}</a><i /> <a href="/privacy.html">{tr ? 'Gizlilik Politikası' : 'Privacy Policy'}</a></div>
           {plan && <p className="current-plan-note">{tr ? `Şu an etkin plan: ${plan.nameTr}.` : `Current plan: ${plan.name}.`}</p>}

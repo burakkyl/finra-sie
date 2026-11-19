@@ -1,6 +1,6 @@
 # Mobile builds and store-readiness checklist
 
-SIE Prep is a Capacitor 8 app targeting Android and iOS. The shared React app remains usable on the web; local demo membership is web-only. A native install never treats a local browser flag as a purchase: mobile Plus access comes only from the configured RevenueCat entitlement backed by Apple App Store or Google Play billing.
+SIE Prep is a Capacitor 8 app targeting Android and iOS. The shared React app remains usable on the web. The web preview does not process purchases or activate Plus; native Plus access comes only from the configured RevenueCat entitlement backed by Apple App Store or Google Play billing.
 
 > A successful CI build is not a store submission and cannot guarantee review or acceptance. Store accounts, signing, product configuration, public legal/support URLs, privacy disclosures, device testing, and the stores' review decisions remain separate release requirements.
 
@@ -38,10 +38,10 @@ The Gradle release configuration signs the AAB only when all four values are pre
 
 ## Configure real in-app purchases
 
-Complete the store product setup before enabling native plans. Empty API keys or missing offerings leave the native purchase buttons unavailable; they do not activate demo access.
+Complete the store product setup before enabling native plans. Empty API keys or missing offerings leave the native purchase buttons unavailable; no local preview state grants Plus access.
 
 1. Create the app in App Store Connect and Google Play Console using bundle/application ID `com.burakkyl.sieprep`; add its in-app products in each store.
-2. Configure the intended plan structure in the stores (for the U.S. storefront, the intended starting prices are `$7` weekly, `$19` monthly, and `$100` one-time/lifetime; configure localized prices and tax handling in the stores). Weekly/monthly are auto-renewable subscriptions; lifetime is a one-time non-consumable purchase. Do not rely on web demo prices for mobile checkout.
+2. Configure the intended plan structure in the stores (for the U.S. storefront, the intended starting prices are `$7` weekly, `$19` monthly, and `$100` one-time/lifetime; configure localized prices and tax handling in the stores). Weekly/monthly are auto-renewable subscriptions; lifetime is a one-time non-consumable purchase. The web preview shows reference USD prices only and has no checkout; the store catalog supplies the actual purchase price.
 3. Connect each store to RevenueCat. Add the matching iOS and Android products, create the `sie_plus` entitlement (or set a different entitlement ID), attach the products to it, and create a **current offering** containing the weekly, monthly, and lifetime packages. Use RevenueCat package types `WEEKLY`, `MONTHLY`, and `LIFETIME`; package/product ID overrides are available if custom identifiers are required.
 4. Add the RevenueCat **public app SDK keys** to GitHub Actions secrets `REVENUECAT_IOS_API_KEY` and `REVENUECAT_ANDROID_API_KEY`. These keys are embedded in the mobile client and are not server secrets. Never put a RevenueCat secret/server API key in a `VITE_` variable. Optional GitHub Actions variables are `REVENUECAT_ENTITLEMENT_ID`, `REVENUECAT_WEEKLY_PACKAGE_ID`, `REVENUECAT_MONTHLY_PACKAGE_ID`, `REVENUECAT_LIFETIME_PACKAGE_ID`, and corresponding `REVENUECAT_WEEKLY_PRODUCT_ID`, `REVENUECAT_MONTHLY_PRODUCT_ID`, `REVENUECAT_LIFETIME_PRODUCT_ID`. A local `.env` can be based on `.env.example` and must not be committed.
 5. Configure store agreements, tax/banking, subscription group/base plans, availability, and sandbox/test accounts. Verify all three store products resolve to the intended cadence and entitlement before distributing a release build.

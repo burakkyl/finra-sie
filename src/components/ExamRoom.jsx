@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleHelp, Clock3, Flag, Grid2X2, Lightbulb, LockKeyhole, PencilLine, RotateCcw, Slash, Target, Calculator as CalculatorIcon, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleHelp, Clock3, Flag, Grid2X2, Lightbulb, LockKeyhole, PencilLine, RotateCcw, Slash, Sparkles, Target, Calculator as CalculatorIcon, X } from 'lucide-react'
 import { SECTIONS } from '../data/questions'
 import Modal from './Modal'
 import CalculatorPad from './CalculatorPad'
@@ -40,7 +40,7 @@ function statusFor(question, answers, flagged) {
   return 'unanswered'
 }
 
-export default function ExamRoom({ questions = [], mode = 'practice', language = 'en', onExit, onFinish }) {
+export default function ExamRoom({ questions = [], mode = 'practice', language = 'en', hasPremium = false, hasUsedFreePractice = false, onViewPlans, onExit, onFinish }) {
   const tr = language === 'tr'
   const isMock = mode === 'mock'
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -124,7 +124,7 @@ export default function ExamRoom({ questions = [], mode = 'practice', language =
   const localizedOptions = (question) => tr ? question.optionsTr || question.options : question.options
 
   if (submitted && result) {
-    return <ExamResults result={result} language={language} onExit={onExit} />
+    return <ExamResults result={result} language={language} hasPremium={hasPremium} hasUsedFreePractice={hasUsedFreePractice} onViewPlans={onViewPlans} onExit={onExit} />
   }
 
   if (!currentQuestion) {
@@ -204,7 +204,7 @@ export default function ExamRoom({ questions = [], mode = 'practice', language =
   )
 }
 
-function ExamResults({ result, language, onExit }) {
+function ExamResults({ result, language, hasPremium, hasUsedFreePractice, onViewPlans, onExit }) {
   const tr = language === 'tr'
   const [filter, setFilter] = useState('incorrect')
   const [expanded, setExpanded] = useState(null)
@@ -230,6 +230,16 @@ function ExamResults({ result, language, onExit }) {
 
           <section className="panel next-steps-panel"><div className="panel-header"><div><p className="eyebrow">{tr ? 'SONRAKİ ADIM' : 'NEXT STEP'}</p><h3>{tr ? 'Yanlışları çalış' : 'Review and improve'}</h3></div><span className="next-step-icon"><Lightbulb size={18} /></span></div><p>{tr ? 'Yanlış ve boş soruları açıp açıklamasını oku. Ardından zayıf olduğun bölümü odaklı pratikle tekrar et.' : 'Open missed questions, read the explanations, and revisit the topics that need another pass.'}</p><div className="next-step-actions"><button className="button button-primary" type="button" onClick={() => { setFilter('incorrect'); document.getElementById('result-review')?.scrollIntoView({ behavior: 'smooth' }) }}><RotateCcw size={15} />{tr ? 'Yanlışları gözden geçir' : 'Review missed questions'}<ArrowRight size={14} /></button><span><Clock3 size={14} />{tr ? 'Her cevabın kaynak notu var' : 'Rule references included'}</span></div><div className="result-time-chip"><Clock3 size={15} /><span>{isMock ? (tr ? 'Süreli deneme' : 'Timed simulation') : (tr ? 'Süresiz pratik' : 'Untimed practice')}</span><strong>{isMock ? '105 min' : `${result.total} ${tr ? 'soru' : 'questions'}`}</strong></div></section>
         </div>
+
+        {!isMock && hasUsedFreePractice && !hasPremium && <section className="results-plus-offer">
+          <span className="results-plus-icon"><Sparkles size={20} /></span>
+          <div className="results-plus-copy">
+            <p className="eyebrow">{tr ? 'ÜCRETSİZ ÖRNEK TAMAMLANDI' : 'FREE SAMPLE COMPLETE'}</p>
+            <h2>{tr ? 'SIE hedefin için devam et.' : 'Keep building your SIE confidence.'}</h2>
+            <p>{tr ? 'Haftalık, aylık ve ömür boyu planları karşılaştır. Daha fazla pratik seti ve 85 soruluk tam deneme sınavının kilidini aç.' : 'Compare weekly, monthly, and lifetime plans to unlock more practice sets and the full 85-question mock exam.'}</p>
+          </div>
+          <button className="button button-primary" type="button" onClick={onViewPlans}>{tr ? 'Plan seçeneklerini gör' : 'View plan options'}<ArrowRight size={15} /></button>
+        </section>}
 
         <section className="panel result-review-panel" id="result-review"><div className="result-review-header"><div><p className="eyebrow">{tr ? 'YANIT İNCELEMESİ' : 'ANSWER REVIEW'}</p><h3>{tr ? 'Soruların ve açıklamalar' : 'Questions & explanations'}</h3></div><div className="filter-chips"><button type="button" className={filter === 'incorrect' ? 'filter-chip active' : 'filter-chip'} onClick={() => setFilter('incorrect')}>{tr ? 'Yanlış / boş' : 'Missed'}<span>{result.total - result.correct}</span></button><button type="button" className={filter === 'correct' ? 'filter-chip active' : 'filter-chip'} onClick={() => setFilter('correct')}>{tr ? 'Doğru' : 'Correct'}<span>{result.correct}</span></button><button type="button" className={filter === 'all' ? 'filter-chip active' : 'filter-chip'} onClick={() => setFilter('all')}>{tr ? 'Tümü' : 'All'}<span>{result.total}</span></button></div></div>
           <div className="result-review-list">{visibleAnswers.map((item) => { const open = expanded === item.questionId; const wrong = item.selectedAnswer !== item.correctAnswer; const questionText = tr ? item.questionTr || item.question : item.question; const options = tr ? item.optionsTr || item.options : item.options; return <article className={`result-review-item ${wrong ? 'review-item-wrong' : 'review-item-correct'}`} key={item.questionId}><button className="result-review-question" type="button" onClick={() => setExpanded(open ? null : item.questionId)}><span className={`result-review-icon ${wrong ? 'review-icon-wrong' : 'review-icon-correct'}`}>{wrong ? <X size={14} /> : <Check size={14} />}</span><span><small>{tr ? `SORU ${result.questionResults.findIndex((q) => q.questionId === item.questionId) + 1} · BÖLÜM ${item.section}` : `QUESTION ${result.questionResults.findIndex((q) => q.questionId === item.questionId) + 1} · SECTION ${item.section}`}</small><strong>{questionText}</strong></span><span className="review-answer-summary"><small>{tr ? 'Senin yanıtın' : 'Your answer'}</small><strong>{answerLetter(item.selectedAnswer)}<i> / </i>{answerLetter(item.correctAnswer)}</strong></span>{open ? <ChevronUp size={17} /> : <ChevronDown size={17} />}</button>{open && <div className="result-review-details"><div className="result-review-options">{options.map((option, index) => <div key={`${item.questionId}-${index}`} className={`result-option ${index === item.correctAnswer ? 'result-option-correct' : ''} ${index === item.selectedAnswer && index !== item.correctAnswer ? 'result-option-wrong' : ''}`}><span>{String.fromCharCode(65 + index)}</span><p>{option}</p>{index === item.correctAnswer && <Check size={15} />}{index === item.selectedAnswer && index !== item.correctAnswer && <X size={15} />}</div>)}</div><div className="result-explanation"><p>{tr ? item.explanationTr || item.explanation : item.explanation}</p><div><strong>{tr ? 'Kural / kaynak' : 'Rule reference'}:</strong> {item.ruleReference}</div><span><Lightbulb size={14} />{tr ? item.keyTakeaway : item.keyTakeaway}</span></div></div>}</article> })}{!visibleAnswers.length && <div className="empty-state"><CheckCircle2 size={23} /><h3>{tr ? 'Gözden geçirilecek soru yok' : 'Nothing to review here'}</h3><p>{tr ? 'Bu filtrede sonuç bulunamadı.' : 'There are no questions in this filter.'}</p></div>}</div>

@@ -17,7 +17,7 @@ function calculateStreak(results, today) {
   return streak
 }
 
-export default function Dashboard({ language = 'en', questions, results = [], hasPremium = false, plan, isNative = false, storeProvider = 'App Store', onMock, onPractice, onUpgrade, onQuestions, onFlashcards, onReference }) {
+export default function Dashboard({ language = 'en', questions, results = [], hasPremium = false, hasUsedFreePractice = false, plan, isNative = false, storeProvider = 'App Store', onMock, onPractice, onUpgrade, onQuestions, onFlashcards, onReference }) {
   const tr = language === 'tr'
   const [today] = useState(() => new Date())
   const todayLabel = new Intl.DateTimeFormat(tr ? 'tr-TR' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(today)
@@ -44,7 +44,7 @@ export default function Dashboard({ language = 'en', questions, results = [], ha
           <p>{tr ? 'Kısa tekrarlar, gerçekçi sorular ve tam süreli denemelerle ilerlemeni takip et.' : 'Build momentum with focused practice, realistic questions, and full-length simulations.'}</p>
           <div className="hero-actions">
             <button className="button button-light" onClick={onMock} type="button"><Play size={16} fill="currentColor" />{tr ? 'Tam denemeyi başlat' : 'Start full mock exam'}<LockKeyhole size={14} className="button-lock" /></button>
-            <button className="button button-ghost-light" onClick={onPractice} type="button">{tr ? '5 soruluk ücretsiz tekrar' : 'Try a 5-question sample'}<ArrowRight size={15} /></button>
+            <button className="button button-ghost-light" onClick={hasUsedFreePractice && !hasPremium ? onUpgrade : onPractice} type="button">{hasPremium ? (tr ? 'Pratik seti oluştur' : 'Build a practice set') : hasUsedFreePractice ? (tr ? 'Örneği kullandın · planları gör' : 'Sample used · view plans') : (tr ? 'Tek ücretsiz 5 soruluk örnek' : 'Try your one free 5-question sample')}<ArrowRight size={15} /></button>
           </div>
           <div className="hero-footnote"><ShieldCheckMini />{isNative ? (tr ? 'Hesap yok. İlerlemen bu cihazda saklanır.' : 'No account. Your progress stays on this device.') : (tr ? 'Hesap yok. İlerlemen bu tarayıcıda saklanır.' : 'No account. Your progress stays in this browser.')}</div>
         </div>
@@ -144,8 +144,12 @@ export default function Dashboard({ language = 'en', questions, results = [], ha
           <div className="panel-header"><div><p className="eyebrow">{tr ? 'ÖNERİLEN' : 'RECOMMENDED'}</p><h3>{tr ? 'Çalışmaya devam et' : 'Continue your prep'}</h3></div><span className="recommend-tag"><Sparkles size={12} />{tr ? 'BUGÜN' : 'TODAY'}</span></div>
           <div className="continue-card">
             <span className="continue-icon"><BookOpenCheck size={20} /></span>
-            <div className="continue-copy"><strong>{tr ? 'Kısa ve odaklı pratik' : 'A focused question set'}</strong><span>{tr ? 'Zayıf olduğun bölümlere yönelik 5 soruyla başla.' : 'Start with 5 questions, then build up by section.'}</span><small><Clock3 size={13} />{tr ? 'Yaklaşık 8 dakika' : 'About 8 minutes'}<i />{tr ? 'Ücretsiz örnek' : 'Free sample'}</small></div>
-            <button className="round-arrow" type="button" onClick={onPractice} aria-label={tr ? 'Pratiğe başla' : 'Start practice'}><ArrowRight size={17} /></button>
+            <div className="continue-copy">
+              <strong>{hasUsedFreePractice && !hasPremium ? (tr ? 'Daha fazla pratik için SIE Plus' : 'Unlock more practice with SIE Plus') : (tr ? 'Kısa ve odaklı pratik' : 'A focused question set')}</strong>
+              <span>{hasUsedFreePractice && !hasPremium ? (tr ? 'Ücretsiz örneğini kullandın. Planlarla yeni setlere ve tam deneme sınavına eriş.' : 'You’ve used your free sample. Plans unlock more sets and the full mock exam.') : (tr ? 'Ücretsiz 5 soruluk örnekle başla; bölümünü seç.' : 'Try your one free 5-question sample and choose your focus.')}</span>
+              <small><Clock3 size={13} />{hasUsedFreePractice && !hasPremium ? (tr ? 'Örnek kullanıldı' : 'Sample used') : (tr ? 'Yaklaşık 8 dakika' : 'About 8 minutes')}<i />{hasUsedFreePractice && !hasPremium ? (tr ? 'Plan seçenekleri' : 'Plan options') : (tr ? 'Tek ücretsiz örnek' : 'One free sample')}</small>
+            </div>
+            <button className="round-arrow" type="button" onClick={hasUsedFreePractice && !hasPremium ? onUpgrade : onPractice} aria-label={hasUsedFreePractice && !hasPremium ? (tr ? 'Planları gör' : 'See plans') : (tr ? 'Pratiğe başla' : 'Start practice')}><ArrowRight size={17} /></button>
           </div>
           <div className="quick-links">
             <button type="button" onClick={onFlashcards}><span className="quick-link-icon quick-link-lilac"><Sparkles size={15} /></span><span><strong>{tr ? 'Flashcardlar' : 'Flashcards'}</strong><small>{tr ? 'Temel kavramları pekiştir' : 'Review high-yield concepts'}</small></span><ChevronRight size={15} /></button>
@@ -157,7 +161,7 @@ export default function Dashboard({ language = 'en', questions, results = [], ha
           <div className="membership-topline"><span className="membership-badge"><Sparkles size={13} />{hasPremium ? (tr ? 'ERİŞİM AÇIK' : 'ACCESS ACTIVE') : (tr ? 'SIE PLUS' : 'SIE PLUS')}</span><span className="membership-no-login">{tr ? 'Giriş gerekmez' : 'No login required'}</span></div>
           <div className="membership-copy"><h3>{hasPremium ? (tr ? 'Tam çalışma alanın hazır.' : 'Your full study suite is ready.') : (tr ? 'Daha fazlasını, giriş yapmadan çalış.' : 'Go further, without an account.')}</h3><p>{hasPremium ? (plan ? (tr ? `${plan.nameTr} planın bu cihazda etkin.` : `${plan.name} plan active on this device.`) : '') : (tr ? 'Tam denemeler, tüm sorular ve kapsamlı çalışma araçlarının kilidini aç.' : 'Unlock full mock exams, every question, and the complete study toolkit.')}</p></div>
           <button className={`button ${hasPremium ? 'button-outline-light' : 'button-light'} membership-button`} onClick={hasPremium ? onUpgrade : onUpgrade} type="button">{hasPremium ? (tr ? 'Planı yönet' : 'Manage plan') : (tr ? 'Planları gör' : 'View plans')}<ArrowRight size={15} /></button>
-          {!hasPremium && <div className="membership-price-hint">{isNative ? (tr ? `Fiyatlar ${storeProvider} tarafından gösterilir.` : `Prices shown by ${storeProvider}.`) : (tr ? 'Haftalık $7 · Aylık $19 · Ömür boyu $100 · web demo' : '$7 weekly · $19 monthly · $100 lifetime · web demo')}</div>}
+          {!hasPremium && <div className="membership-price-hint">{isNative ? (tr ? `Fiyatlar ${storeProvider} tarafından gösterilir.` : `Prices shown by ${storeProvider}.`) : (tr ? 'Haftalık, aylık ve ömür boyu seçenekler · mobil uygulamada satın al' : 'Weekly, monthly, and lifetime options · purchase in the mobile app')}</div>}
         </article>
       </section>
 

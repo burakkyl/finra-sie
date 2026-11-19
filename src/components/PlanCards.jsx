@@ -49,7 +49,7 @@ export default function PlanCards({
               : nativeReady
                 ? (tr ? `${storeProvider} ile devam et` : `Continue with ${storeProvider}`)
                 : unavailableLabel
-            : (tr ? 'Demo planını etkinleştir' : 'Activate demo plan')
+            : (tr ? 'Mobil uygulamada kullanılabilir' : 'Available in mobile app')
 
         return (
           <article key={plan.id} className={`plan-card ${plan.popular ? 'plan-popular' : ''} ${active ? 'plan-current' : ''}`}>
@@ -65,9 +65,9 @@ export default function PlanCards({
               {benefits.map((benefit) => <li key={benefit}><Check size={15} />{benefit}</li>)}
             </ul>
             <button
-              className={`button ${plan.popular ? 'button-primary' : 'button-outline'} plan-button`}
+              className={`button ${plan.popular ? 'button-primary' : 'button-outline'} plan-button ${!isNative ? 'plan-button-web' : ''}`}
               type="button"
-              disabled={active || (isNative && (!nativeReady || Boolean(busyPlanId)))}
+              disabled={active || !isNative || (isNative && (!nativeReady || Boolean(busyPlanId)))}
               onClick={() => onSelect?.(plan.id)}
             >
               {busyPlanId === plan.id && <LoaderCircle size={14} className="spinner-icon" />}
